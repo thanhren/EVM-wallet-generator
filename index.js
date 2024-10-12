@@ -1,8 +1,8 @@
 import chalk from 'chalk';
 import { Wallet, ethers } from 'ethers';
-import { appendFileSync } from 'fs';
 import moment from 'moment';
 import readlineSync from 'readline-sync';
+import ExcelJS from 'exceljs'; // Import ExcelJS
 
 // Function to create a new Ethereum account
 function createAccountETH() {
@@ -19,7 +19,7 @@ function createAccountETH() {
   try {
     // Get the total number of wallets to create from user input
     const totalWallet = readlineSync.question(
-      chalk.yellow('Input how much the wallet you want: ')
+      chalk.yellow('Input how many wallets you want to create: ')
     );
 
     let count = 1;
@@ -29,21 +29,35 @@ function createAccountETH() {
       count = totalWallet;
     }
 
+    // Initialize a new Excel workbook and sheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Wallets');
+
+    // Add headers to the worksheet
+    worksheet.columns = [
+      { header: 'Address', key: 'address', width: 42 },
+      { header: 'Private Key', key: 'privateKey', width: 66 },
+      { header: 'Mnemonic', key: 'mnemonic', width: 60 }
+    ];
+
     // Create the specified number of wallets
     while (count > 0) {
       const createWalletResult = createAccountETH();
       const theWallet = new Wallet(createWalletResult.privateKey);
 
       if (theWallet) {
-        // Append wallet details to result.txt
-        appendFileSync(
-          './result.txt',
-          `Address: ${theWallet.address} | Private Key: ${createWalletResult.privateKey} | Mnemonic: ${createWalletResult.mnemonicKey}\n`
-        );
+        // Add wallet details to the Excel sheet
+        worksheet.addRow({
+          address: theWallet.address,
+          privateKey: createWalletResult.privateKey,
+          mnemonic: createWalletResult.mnemonicKey
+        });
+
         // Display success message with the wallet address and timestamp
         console.log(
           chalk.green(
-            `[${moment().format('HH:mm:ss')}] => ` + 'Wallet created...! Your address: ' + theWallet.address
+            `[${moment().format('HH:mm:ss')}] => ` +
+              'Wallet created...! Your address: ' + theWallet.address
           )
         );
       }
@@ -51,15 +65,18 @@ function createAccountETH() {
       count--;
     }
 
+    // Write the Excel file
+    await workbook.xlsx.writeFile('result.xlsx');
+
     // Display final message after creating all wallets
-    // Change the timer (3000) if you think this is too long, in milliseconds.
     setTimeout(() => {
       console.log(
         chalk.green(
-          'All wallets have been created. Check result.txt to check your results (the address, mnemonic, and private key).'
+          'All wallets have been created. Check result.xlsx to see the address, mnemonic, and private key.'
         )
       );
     }, 3000);
+
     return;
   } catch (error) {
     // Display error message if an error occurs
